@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRC London Dashboard</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Simple icons
+        const Search = ({ style }) => (
+            <svg style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+            </svg>
+        );
+
+        const ChevronDown = ({ style }) => (
+            <svg style={style} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="6 9 12 15 18 9"/>
+            </svg>
+        );
+
+        const Lock = ({ size, color }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        );
+
+        const Eye = ({ size }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+            </svg>
+        );
+
+        const EyeOff = ({ size }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+        );
+
+        const Dashboard = () => {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            const [error, setError] = useState('');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [campusFilter, setCampusFilter] = useState('All');
+
+            // 🔐 CHANGE THIS PASSWORD TO WHATEVER YOU WANT!
+            const CORRECT_PASSWORD = 'CRC2025';
+
+            // Your church data
+            const dashboardData = [
+                { campus: 'Ashford', zonePastor: 'Ps Eddie Coetzee (ZP)', homecellLeaders: 'Ps Eddie Coetzee Prodigals', salvations: 0, ftv: 0, attAdult: '0%', attChild: '0%', totalAdult: 9, totalChild: 3, goalSal: '0%', goalFtv: '0%', goalAtt: '0%' },
+                { campus: 'Ashford', zonePastor: 'Ps Eddie Coetzee (ZP)', homecellLeaders: 'Clive Madden', salvations: 0, ftv: 1, attAdult: '24%', attChild: 'N/A', totalAdult: 6, totalChild: 0, goalSal: '0%', goalFtv: '25%', goalAtt: '35%' },
+                { campus: 'Ashford', zonePastor: 'Ps Eddie Coetzee (ZP)', homecellLeaders: 'Holly Ballan', salvations: 0, ftv: 0, attAdult: '49%', attChild: '80%', totalAdult: 4, totalChild: 4, goalSal: '0%', goalFtv: '0%', goalAtt: '70%' },
+                { campus: 'Ashford', zonePastor: 'Ps Eddie Coetzee (ZP)', homecellLeaders: 'Ps Eddie Coetzee Leaders', salvations: 0, ftv: 1, attAdult: '80%', attChild: '60%', totalAdult: 2, totalChild: 1, goalSal: '0%', goalFtv: '25%', goalAtt: '114%' },
+                { campus: 'Ashford', zonePastor: 'Ps Eddie Coetzee (ZP)', homecellLeaders: 'Zigi Ballan', salvations: 1, ftv: 0, attAdult: '28%', attChild: '50%', totalAdult: 10, totalChild: 8, goalSal: '100%', goalFtv: '0%', goalAtt: '40%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Ps Kester Olarewaju Leaders', salvations: 2, ftv: 3, attAdult: '28%', attChild: '0%', totalAdult: 4, totalChild: 3, goalSal: '200%', goalFtv: '75%', goalAtt: '39%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Ps Kester Olarewaju Prodigals', salvations: 0, ftv: 0, attAdult: '0%', attChild: '0%', totalAdult: 131, totalChild: 27, goalSal: '0%', goalFtv: '0%', goalAtt: '0%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'James Jarvis', salvations: 1, ftv: 6, attAdult: '14%', attChild: 'N/A', totalAdult: 9, totalChild: 0, goalSal: '100%', goalFtv: '150%', goalAtt: '21%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Marlize Bothma', salvations: 2, ftv: 5, attAdult: '13%', attChild: '27%', totalAdult: 11, totalChild: 9, goalSal: '200%', goalFtv: '125%', goalAtt: '18%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Noreen Magomo', salvations: 0, ftv: 2, attAdult: '27%', attChild: '0%', totalAdult: 11, totalChild: 3, goalSal: '0%', goalFtv: '50%', goalAtt: '38%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Linette Snyman', salvations: 0, ftv: 0, attAdult: '38%', attChild: '48%', totalAdult: 14, totalChild: 8, goalSal: '0%', goalFtv: '0%', goalAtt: '55%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Rima Kubiliene', salvations: 0, ftv: 1, attAdult: '30%', attChild: '60%', totalAdult: 5, totalChild: 1, goalSal: '0%', goalFtv: '25%', goalAtt: '43%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Ps Anton Snyman', salvations: 1, ftv: 1, attAdult: '10%', attChild: '0%', totalAdult: 10, totalChild: 1, goalSal: '100%', goalFtv: '25%', goalAtt: '14%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Sesitwa Mohlala', salvations: 5, ftv: 5, attAdult: '30%', attChild: '0%', totalAdult: 6, totalChild: 2, goalSal: '500%', goalFtv: '125%', goalAtt: '43%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Tinus Moolman', salvations: 1, ftv: 1, attAdult: '49%', attChild: 'N/A', totalAdult: 5, totalChild: 0, goalSal: '100%', goalFtv: '25%', goalAtt: '70%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Victor Bolaji Ode', salvations: 0, ftv: 0, attAdult: '50%', attChild: 'N/A', totalAdult: 3, totalChild: 0, goalSal: '0%', goalFtv: '0%', goalAtt: '71%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Benjamin Jean-Jacques III', salvations: 3, ftv: 5, attAdult: '38%', attChild: '0%', totalAdult: 10, totalChild: 1, goalSal: '300%', goalFtv: '125%', goalAtt: '54%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Divine Egbedi', salvations: 0, ftv: 2, attAdult: '36%', attChild: 'N/A', totalAdult: 6, totalChild: 0, goalSal: '0%', goalFtv: '50%', goalAtt: '51%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Hannah Shewan', salvations: 0, ftv: 0, attAdult: '21%', attChild: 'N/A', totalAdult: 9, totalChild: 0, goalSal: '0%', goalFtv: '0%', goalAtt: '30%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Larisa Spring', salvations: 0, ftv: 0, attAdult: '0%', attChild: '0%', totalAdult: 9, totalChild: 3, goalSal: '0%', goalFtv: '0%', goalAtt: '0%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Maria Olarewaju', salvations: 1, ftv: 3, attAdult: '53%', attChild: 'N/A', totalAdult: 3, totalChild: 0, goalSal: '100%', goalFtv: '75%', goalAtt: '76%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Nadine Lewis', salvations: 0, ftv: 2, attAdult: '45%', attChild: '73%', totalAdult: 4, totalChild: 3, goalSal: '0%', goalFtv: '50%', goalAtt: '64%' },
+                { campus: 'East Barnet', zonePastor: 'Ps Kester Olarewaju (ZP)', homecellLeaders: 'Felicia Tchen Belfast', salvations: 0, ftv: 0, attAdult: '10%', attChild: 'N/A', totalAdult: 3, totalChild: 0, goalSal: '0%', goalFtv: '0%', goalAtt: '14%' },
+            ];
+
+            const [filteredData, setFilteredData] = useState(dashboardData);
+
+            useEffect(() => {
+                const auth = sessionStorage.getItem('churchAuth');
+                if (auth === 'true') setIsAuthenticated(true);
+            }, []);
+
+            useEffect(() => {
+                let filtered = dashboardData;
+                if (campusFilter !== 'All') {
+                    filtered = filtered.filter(row => row.campus === campusFilter);
+                }
+                if (searchTerm) {
+                    filtered = filtered.filter(row =>
+                        row.homecellLeaders.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        row.campus.toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                }
+                setFilteredData(filtered);
+            }, [campusFilter, searchTerm]);
+
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (password === CORRECT_PASSWORD) {
+                    setIsAuthenticated(true);
+                    sessionStorage.setItem('churchAuth', 'true');
+                } else {
+                    setError('Incorrect password');
+                    setPassword('');
+                }
+            };
+
+            const handleLogout = () => {
+                setIsAuthenticated(false);
+                sessionStorage.removeItem('churchAuth');
+            };
+
+            const getColor = (value, type) => {
+                if (!value || value === 'N/A' || value === '0%') return 'white';
+                const num = parseInt(value);
+                if (type === 'attendance') {
+                    if (num >= 70) return '#90EE90';
+                    if (num >= 40) return '#FFD580';
+                    return '#FFB6C1';
+                }
+                if (type === 'goal') {
+                    if (num >= 100) return '#90EE90';
+                    if (num >= 50) return '#FFD580';
+                    return '#FFB6C1';
+                }
+                return 'white';
+            };
+
+            if (!isAuthenticated) {
+                return (
+                    <div style={{
+                        minHeight: '100vh',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                        padding: '20px'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'white',
+                            padding: '50px 40px',
+                            borderRadius: '16px',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                            width: '100%',
+                            maxWidth: '450px'
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                marginBottom: '35px'
+                            }}>
+                                <div style={{
+                                    backgroundColor: '#1e3a8a',
+                                    borderRadius: '16px',
+                                    padding: '20px',
+                                    marginBottom: '20px'
+                                }}>
+                                    <Lock size={40} color="white" />
+                                </div>
+                                <h1 style={{
+                                    margin: '0 0 10px 0',
+                                    fontSize: '28px',
+                                    fontWeight: '700',
+                                    color: '#1e293b'
+                                }}>
+                                    CRC London
+                                </h1>
+                                <p style={{ color: '#64748b', margin: 0 }}>
+                                    Monthly Homecell Report
+                                </p>
+                            </div>
+
+                            <form onSubmit={handleLogin}>
+                                <div style={{ marginBottom: '25px', position: 'relative' }}>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '10px',
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        color: '#334155'
+                                    }}>
+                                        Password
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            placeholder="Enter password"
+                                            required
+                                            autoFocus
+                                            style={{
+                                                width: '100%',
+                                                padding: '14px 45px 14px 16px',
+                                                border: error ? '2px solid #ef4444' : '2px solid #e2e8f0',
+                                                borderRadius: '10px',
+                                                fontSize: '15px',
+                                                outline: 'none',
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '12px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#64748b'
+                                            }}
+                                        >
+                                            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {error && (
+                                    <div style={{
+                                        backgroundColor: '#fee2e2',
+                                        color: '#991b1b',
+                                        padding: '14px',
+                                        borderRadius: '10px',
+                                        marginBottom: '20px',
+                                        fontSize: '14px'
+                                    }}>
+                                        {error}
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    style={{
+                                        width: '100%',
+                                        padding: '16px',
+                                        backgroundColor: '#1e3a8a',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        fontSize: '16px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Access Dashboard
+                                </button>
+                            </form>
+
+                            <div style={{
+                                marginTop: '30px',
+                                padding: '16px',
+                                backgroundColor: '#f8fafc',
+                                borderRadius: '10px',
+                                fontSize: '13px',
+                                color: '#64748b',
+                                textAlign: 'center'
+                            }}>
+                                🔒 Authorized Access Only
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            const uniqueCampuses = ['All', ...new Set(dashboardData.map(row => row.campus))];
+
+            return (
+                <div style={{ 
+                    padding: '20px',
+                    backgroundColor: '#f5f5f5',
+                    minHeight: '100vh'
+                }}>
+                    <div style={{
+                        background: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
+                        padding: '30px',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap'
+                    }}>
+                        <div>
+                            <h1 style={{
+                                color: 'white',
+                                margin: '0 0 10px 0',
+                                fontSize: '32px',
+                                fontWeight: '700'
+                            }}>
+                                November - Church Report
+                            </h1>
+                            <p style={{ color: 'rgba(255,255,255,0.9)', margin: 0 }}>
+                                CRC London - Homecell Performance
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                padding: '12px 24px',
+                                backgroundColor: 'rgba(255,255,255,0.2)',
+                                color: 'white',
+                                border: '2px solid rgba(255,255,255,0.3)',
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Logout
+                        </button>
+                    </div>
+
+                    <div style={{
+                        backgroundColor: 'white',
+                        padding: '20px',
+                        borderRadius: '12px',
+                        marginBottom: '20px',
+                        display: 'flex',
+                        gap: '15px',
+                        flexWrap: 'wrap'
+                    }}>
+                        <div style={{ flex: '1 1 300px', position: 'relative' }}>
+                            <Search style={{
+                                position: 'absolute',
+                                left: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                color: '#94a3b8'
+                            }} />
+                            <input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 12px 12px 40px',
+                                    border: '2px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{ position: 'relative', minWidth: '200px' }}>
+                            <select
+                                value={campusFilter}
+                                onChange={(e) => setCampusFilter(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 35px 12px 12px',
+                                    border: '2px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    appearance: 'none'
+                                }}
+                            >
+                                {uniqueCampuses.map(campus => (
+                                    <option key={campus} value={campus}>{campus}</option>
+                                ))}
+                            </select>
+                            <ChevronDown style={{
+                                position: 'absolute',
+                                right: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                pointerEvents: 'none',
+                                color: '#64748b'
+                            }} />
+                        </div>
+                    </div>
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: '15px',
+                        marginBottom: '20px'
+                    }}>
+                        <div style={{
+                            backgroundColor: 'white',
+                            padding: '20px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #3b82f6'
+                        }}>
+                            <div style={{ color: '#64748b', fontSize: '14px' }}>Homecells</div>
+                            <div style={{ fontSize: '32px', fontWeight: '700' }}>
+                                {filteredData.length}
+                            </div>
+                        </div>
+                        <div style={{
+                            backgroundColor: 'white',
+                            padding: '20px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #10b981'
+                        }}>
+                            <div style={{ color: '#64748b', fontSize: '14px' }}>Salvations</div>
+                            <div style={{ fontSize: '32px', fontWeight: '700' }}>
+                                {filteredData.reduce((sum, row) => sum + row.salvations, 0)}
+                            </div>
+                        </div>
+                        <div style={{
+                            backgroundColor: 'white',
+                            padding: '20px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #f59e0b'
+                        }}>
+                            <div style={{ color: '#64748b', fontSize: '14px' }}>Visitors</div>
+                            <div style={{ fontSize: '32px', fontWeight: '700' }}>
+                                {filteredData.reduce((sum, row) => sum + row.ftv, 0)}
+                            </div>
+                        </div>
+                        <div style={{
+                            backgroundColor: 'white',
+                            padding: '20px',
+                            borderRadius: '12px',
+                            borderLeft: '4px solid #8b5cf6'
+                        }}>
+                            <div style={{ color: '#64748b', fontSize: '14px' }}>Members</div>
+                            <div style={{ fontSize: '32px', fontWeight: '700' }}>
+                                {filteredData.reduce((sum, row) => sum + row.totalAdult + row.totalChild, 0)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{
+                                width: '100%',
+                                borderCollapse: 'collapse',
+                                fontSize: '12px'
+                            }}>
+                                <thead>
+                                    <tr style={{ backgroundColor: '#1e3a8a', color: 'white' }}>
+                                        <th style={{ padding: '12px', textAlign: 'left' }}>Campus</th>
+                                        <th style={{ padding: '12px', textAlign: 'left' }}>Homecell Leaders</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>SAL</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>FTV</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>ATT Adult</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>ATT Child</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Adult</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Child</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Goal SAL</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Goal FTV</th>
+                                        <th style={{ padding: '12px', textAlign: 'center' }}>Goal ATT</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredData.map((row, index) => (
+                                        <tr key={index} style={{
+                                            backgroundColor: index % 2 === 0 ? '#f8fafc' : 'white'
+                                        }}>
+                                            <td style={{ padding: '10px', fontWeight: '600' }}>{row.campus}</td>
+                                            <td style={{ padding: '10px' }}>{row.homecellLeaders}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: row.salvations > 0 ? '#90EE90' : 'white', fontWeight: '600' }}>{row.salvations}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: row.ftv > 0 ? '#90EE90' : 'white', fontWeight: '600' }}>{row.ftv}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: getColor(row.attAdult, 'attendance'), fontWeight: '600' }}>{row.attAdult}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: row.attChild !== 'N/A' ? getColor(row.attChild, 'attendance') : 'white', fontWeight: '600' }}>{row.attChild}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{row.totalAdult}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{row.totalChild}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: getColor(row.goalSal, 'goal'), fontWeight: '600' }}>{row.goalSal}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: getColor(row.goalFtv, 'goal'), fontWeight: '600' }}>{row.goalFtv}</td>
+                                            <td style={{ padding: '10px', textAlign: 'center', backgroundColor: getColor(row.goalAtt, 'goal'), fontWeight: '600' }}>{row.goalAtt}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div style={{
+                        marginTop: '20px',
+                        padding: '20px',
+                        backgroundColor: 'white',
+                        borderRadius: '12px'
+                    }}>
+                        <h3 style={{ margin: '0 0 15px 0', fontSize: '16px' }}>Color Legend</h3>
+                        <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '24px', height: '24px', backgroundColor: '#90EE90', borderRadius: '4px' }}></div>
+                                <span>Excellent (≥70% or ≥100%)</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '24px', height: '24px', backgroundColor: '#FFD580', borderRadius: '4px' }}></div>
+                                <span>Good (40-69% or 50-99%)</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ width: '24px', height: '24px', backgroundColor: '#FFB6C1', borderRadius: '4px' }}></div>
+                                <span>Needs Attention (&lt;40% or &lt;50%)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{
+                        marginTop: '20px',
+                        textAlign: 'center',
+                        color: '#64748b',
+                        fontSize: '13px'
+                    }}>
+                        <p>© 2025 CRC London</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<Dashboard />);
+    </script>
+</body>
+</html>
